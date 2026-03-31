@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html onclick="unlockVoice()">
+<head>
+  <title>Campus Navigation</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <!-- Routing CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
+
+  <!-- Your CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div id="welcomeModal" class="modal-overlay">
+  <div class="modal-content">
+    <h2>Welcome to Uni-Guide</h2>
+    <p>Please enter your details to start navigating.</p>
+    
+    <input type="text" id="userName" placeholder="Enter your full name" required>
+    
+    <select id="userRole">
+      <option value="" disabled selected>Select your role</option>
+      <option value="Student">Student</option>
+      <option value="Faculty">Faculty</option>
+      <option value="Visitor">Visitor</option>
+    </select>
+
+    <button id="startBtn">Start Navigating</button>
+  </div>
+</div>
+
+<div class="top-bar">
+  <input type="text" id="search" placeholder="Search building or room..." autocomplete="off">
+  <div id="suggestions"></div>
+</div>
+
+<div id="map"></div>
+
+<!-- LOADING -->
+<div id="loading" class="loading">📍 Getting location...</div>
+
+<div id="directionBox" class="direction-box hidden"></div>
+
+<div id="infoPanel" class="panel hidden">
+  <div class="panel-header">
+    <span id="placeName">Select a place</span>
+    <button id="closePanel">✖</button>
+  </div>
+
+  <div class="panel-body">
+    <p id="placeDetails">Search or click a location</p>
+    <button id="navigateBtn">Navigate</button>
+  </div>
+</div>
+
+<div class="buttons">
+  <button id="locateBtn" title="Your Location">📍</button>
+  <button id="gateBtn" title="Go to Gate">🚪</button> 
+  <button id="clearRoute" title="Clear Route">❌</button>
+  <button id="voiceBtn" title="Voice Navigation">🔇 OFF</button>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Routing JS -->
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+<!-- ENSURE SCRIPT LOADS AFTER DOM -->
+<script src="script.js" defer></script>
+
+</body>
+</html>

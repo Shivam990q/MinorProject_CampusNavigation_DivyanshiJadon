@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Campus Navigation</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <style>
+    body { margin: 0; }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    #search {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      padding: 10px;
+      width: 250px;
+      border-radius: 8px;
+      border: none;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+<input type="text" id="search" placeholder="Search location...">
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+  // Initialize map
+  var map = L.map('map').setView([26.138246, 78.207349], 16);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  let allLocations = [];
+
+  // FETCH DATA FROM BACKEND
+  fetch("http://localhost:7000/api/locations")
+    .then(res => res.json())
+    .then(data => {
+
+      console.log("DATA:", data); 
+
+      allLocations = data;
+
+      data.forEach(loc => {
+
+        // ONLY SHOW ITEMS WITH COORDINATES
+        if (
+          loc.latitude &&
+          loc.longitude &&
+          (loc.type === "building" ||
+           loc.type === "canteen" ||
+           loc.type === "sports" ||
+           loc.type === "facility")
+        ) {
+
+          L.marker([loc.latitude, loc.longitude])
+            .addTo(map)
+            .bindPopup(`
+              <b>${loc.name}</b><br>
+              Type: ${loc.type}<br>
+              Block: ${loc.block || "N/A"}
+            `);
+        }
+
+      });
+
+    })
+    .catch(err => console.log("Error:", err));
+
+
+
+  // SEARCH FUNCTION
+  document.getElementById("search").addEventListener("input", function () {
+
+    let query = this.value.toLowerCase();
+
+    if (!query) return;
+
+    // Find any matching location (room or building)
+    let found = allLocations.find(loc =>
+      loc.name.toLowerCase().includes(query)
+    );
+
+    if (found) {
+
+      // If it has coordinates → go there
+      if (found.latitude && found.longitude) {
+
+        map.setView([found.latitude, found.longitude], 19);
+
+        L.marker([found.latitude, found.longitude])
+          .addTo(map)
+          .bindPopup(found.name)
+          .openPopup();
+      }
+
+      // If it's a ROOM → find its building
+      else {
+
+        let building = allLocations.find(loc =>
+          loc.type === "building" &&
+          loc.block &&
+          found.block &&
+          loc.block.toLowerCase().includes(found.block.toLowerCase())
+        );
+
+        if (building) {
+
+          map.setView([building.latitude, building.longitude], 19);
+
+          L.marker([building.latitude, building.longitude])
+            .addTo(map)
+            .bindPopup(`${found.name} (in ${building.name})`)
+            .openPopup();
+        }
+      }
+
+    }
+
+  });
+
+</script>
+
+</body>
+</html>
