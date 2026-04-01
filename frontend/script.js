@@ -4,16 +4,16 @@ document.addEventListener("DOMContentLoaded", function() {
     const startBtn = document.getElementById("startBtn");
 
     // 1. Check if user exists. 
-    // TIP: To test the database again, type localStorage.clear() in console and refresh.
+
     if (localStorage.getItem("campus_user_name")) {
         console.log("User already exists in LocalStorage. Skipping DB save.");
         modal.style.display = "none";
-        return; // This stops the code here so the button logic below never runs
+        return; 
     }
 
     if (startBtn) {
         startBtn.onclick = function() {
-            console.log("Start Button Clicked!"); // Check this in Console
+            console.log("Start Button Clicked!"); 
 
             const name = document.getElementById("userName").value.trim();
             const role = document.getElementById("userRole").value;
@@ -27,9 +27,9 @@ document.addEventListener("DOMContentLoaded", function() {
                 })
                 .then(res => res.json())
                 .then(data => {
-                    console.log("✅ Database Sync:", data.message);
+                    console.log("Database Sync:", data.message);
                     
-                    // Save to local only AFTER successful DB response
+                    // Save to local 
                     localStorage.setItem("campus_user_name", name);
                     localStorage.setItem("campus_user_role", role);
                     
@@ -42,7 +42,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 })
                 .catch(err => {
-                    console.error("❌ Database Error:", err);
+                    console.error("Database Error:", err);
                     alert("Could not connect to server. Is your backend running?");
                 });
 
@@ -52,7 +52,6 @@ document.addEventListener("DOMContentLoaded", function() {
         };
     }
 });
-
 
 // Initialize map
 const map = L.map('map').setView([26.138246, 78.207349], 16);
@@ -72,16 +71,16 @@ let gateMarker = null;
 let destinationLatLng = null;
 let lastLatLng = null;
 let lastRouteUpdate = 0;
+let isFirstFix = true;
 
-// NEW: Voice state and last instruction tracking
+// Voice state and last instruction tracking
 let voiceEnabled = false;
-let lastSpokenInstruction = ""; // FIX: Prevents voice from repeating the same step
+let lastSpokenInstruction = "";
 
 // ================= VOICE FUNCTION =================
 function speak(text) {
   if (!voiceEnabled || text === lastSpokenInstruction) return;
 
-  // Clear any current speaking to say the new instruction immediately
   window.speechSynthesis.cancel();
   
   const msg = new SpeechSynthesisUtterance(text);
@@ -119,18 +118,18 @@ function isGroundFloor(floor) {
 
 // ================= SMOOTH LOCATION =================
 function smoothPosition(newLatLng) {
-  if (!lastLatLng) {
-    lastLatLng = newLatLng;
-    return newLatLng;
-  }
+  if (!lastLatLng) {
+    lastLatLng = newLatLng;
+    return newLatLng;
+  }
 
-  const smoothed = L.latLng(
-    (lastLatLng.lat + newLatLng.lat) / 2,
-    (lastLatLng.lng + newLatLng.lng) / 2
-  );
+  const smoothed = L.latLng(
+    lastLatLng.lat + (newLatLng.lat - lastLatLng.lat) * 0.5,
+    lastLatLng.lng + (newLatLng.lng - lastLatLng.lng) * 0.5
+  );
 
-  lastLatLng = smoothed;
-  return smoothed;
+  lastLatLng = smoothed;
+  return smoothed;
 }
 
 // ================= REAL-TIME USER LOCATION =================
@@ -149,51 +148,56 @@ if (navigator.geolocation) {
 
   navigator.geolocation.watchPosition(
     function(position) {
-      // RELAX THE ACCURACY FILTER (Changed from 20 to 100 for testing)
-      if (position.coords.accuracy > 100) {
-          console.warn("High accuracy not available:", position.coords.accuracy);
-          // Don't return, just log it so you know why it might be jumpy
-      }
-
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
 
-      // Remove loading indicator
+      console.log(`📍 Current Signal: ${accuracy}m accuracy`);
+
+      if (accuracy > 2000) {
+        console.warn("Signal too imprecise, skipping update.");
+        return;
+      }
+
+      const rawPoint = L.latLng(lat, lng);
       const loader = document.getElementById("loading");
       if (loader) loader.style.display = 'none';
 
-      const rawPoint = L.latLng(lat, lng);
-      userLocation = smoothPosition(rawPoint);
-
       if (!userMarker) {
+        userLocation = rawPoint;
         userMarker = L.marker(userLocation, { 
-            icon: userDotIcon,
-            zIndexOffset: 1000 
+          icon: userDotIcon,
+          zIndexOffset: 1000 
         }).addTo(map);
-        
-        // Center only on first fix
-        map.flyTo(userLocation, 18); 
-      } else {
-        userMarker.setLatLng(userLocation);
+
+        map.flyTo(userLocation, 18);
+        return;
       }
 
-      // Auto-reroute logic
+      const previous = userMarker.getLatLng();
+      const movedDistance = previous.distanceTo(rawPoint);
+
+      if (movedDistance < 3) return;
+
+      userLocation = rawPoint;
+      userMarker.setLatLng(userLocation);
+
       if (routingControl && destinationLatLng) {
-        const dist = userLocation.distanceTo(destinationLatLng);
-        if (dist > 15 && Date.now() - lastRouteUpdate > 5000) {
-          lastRouteUpdate = Date.now();
+        // Reroute only if we've moved significantly from the previous point
+        if (movedDistance > 30) {
           navigateTo(destinationLatLng.lat, destinationLatLng.lng);
         }
       }
     },
     function(error) {
-      console.error("GPS Error Code:", error.code, error.message);
-      document.getElementById("loading").innerText = "📍 GPS Signal Weak...";
+      console.error("GPS Error:", error.message);
+      const loadEl = document.getElementById("loading");
+      if (loadEl) loadEl.innerText = "📍 " + error.message;
     },
     {
       enableHighAccuracy: true,
-      maximumAge: 0,
-      timeout: 15000 // Increased timeout
+      maximumAge: 5000,
+      timeout: 20000 
     }
   );
 }
@@ -250,7 +254,12 @@ fetch("http://localhost:7000/api/locations")
 // ================= NAVIGATION =================
 function navigateTo(lat, lng) {
 
-  const start = userLocation ? userLocation : map.getCenter();
+  if (!userLocation) {
+  alert("📍 Waiting for your location... Please wait.");
+  return;
+}
+
+const start = userLocation;
 
   destinationLatLng = L.latLng(lat, lng);
 
@@ -267,7 +276,7 @@ function navigateTo(lat, lng) {
     show: false,
     addWaypoints: false,
     draggableWaypoints: false,
-    fitSelectedRoutes: false, // FIX: Map won't jump/zoom out automatically now
+    fitSelectedRoutes: false,
 
     router: L.Routing.osrmv1({
       serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -323,7 +332,7 @@ if (clean !== lastSpokenInstruction) {
 }
     }
 
-    //  FIX: CLEAR AND UPDATE Place Details (No += growth)
+    // CLEAR AND UPDATE Place Details
     const detailsEl = document.getElementById("placeDetails");
     if (detailsEl) {
         detailsEl.innerHTML = `
@@ -332,7 +341,7 @@ if (clean !== lastSpokenInstruction) {
         `;
     }
 
-    // FIX: CLEAR AND UPDATE Direction Box (No += growth)
+    // CLEAR AND UPDATE Direction Box
     const box = document.getElementById("directionBox");
     box.classList.remove("hidden");
 
@@ -425,7 +434,7 @@ function selectLocation(loc) {
 
   map.setView([lat, lng], 19);
 
-  // MODERN RED PIN ICON
+  // RED PIN ICON
   currentMarker = L.marker([lat, lng], {
     icon: L.icon({
       iconUrl: "https://cdn-icons-png.flaticon.com/512/2776/2776067.png",
