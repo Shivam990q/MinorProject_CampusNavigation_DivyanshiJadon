@@ -11,11 +11,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connection
-mongoose.connect("mongodb://127.0.0.1:27017/campus_navigation")
+// ✅ FIX 1: MongoDB (local + Railway both)
+mongoose.connect(process.env.MONGO_URL || "mongodb://127.0.0.1:27017/campus_navigation")
 .then(() => console.log("MongoDB Connected"))
 .catch(err => console.log(err));
-
 
 app.use("/api/locations", locationRoutes);
 app.use("/api/search", locationRoutes); 
@@ -26,6 +25,9 @@ app.get("/hello", (req, res) => {
   res.send("Backend running with clean structure!");
 });
 
-app.listen(7000, () => {
-  console.log("Server running on port 7000");
+// ✅ FIX 2: PORT (VERY IMPORTANT)
+const PORT = process.env.PORT || 7000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
