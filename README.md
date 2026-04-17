@@ -18,8 +18,9 @@ This project is a Campus Navigation System that provides backend APIs along with
 * MongoDB
 * HTML, CSS, JavaScript
 
-## Project Structure
+## ## Project Structure
 
+```
 CAMPUS NAVIGATION BACKEND/
 │
 ├── frontend/
@@ -43,6 +44,8 @@ CAMPUS NAVIGATION BACKEND/
 ├── package.json
 ├── .gitignore
 └── README.md
+```
+
 
 ## Prerequisites
 
